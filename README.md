@@ -111,7 +111,7 @@ user-friendly interface.
 
 The Streamlit application is deployed and publicly accessible at:
 
-🔗 **https://electricity-load-forecasting.streamlit-amitx2209.app**
+🔗 **https://electricity-load-forecasting-amitx2209.streamlit.app**
 
 (This link can be shared for viva, demonstrations, and evaluations.)
 
