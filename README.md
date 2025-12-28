@@ -10,11 +10,11 @@
 
 ## 📌 Project Overview
 
-This project focuses on forecasting future electricity demand for a selected
-Indian state using historical power consumption data and multiple machine
-learning regression models. The objective is to analyze electricity usage
-patterns, compare different machine learning models, and deploy the best
-performing model using a web-based application.
+This project focuses on forecasting future electricity demand for multiple
+Indian states using historical power consumption data and machine learning
+regression models. The objective is to analyze electricity usage patterns,
+compare different machine learning models, and deploy the best-performing
+model using a web-based application.
 
 The project demonstrates a complete **end-to-end machine learning pipeline**,
 starting from raw data preprocessing to model deployment, making it suitable
@@ -35,12 +35,12 @@ for **B.Tech final year evaluation**, internships, and portfolio use.
 
 • **Source:** Kaggle – State-wise Power Consumption in India  
 • **Type:** Time-series electricity consumption dataset  
-• **Scope:** Single-state electricity load forecasting  
+• **Scope:** Multi-state electricity load forecasting  
 • **Granularity:** Daily electricity consumption  
 
 The original dataset contains electricity consumption values for multiple
-Indian states. For this project, a single state was selected and extracted
-to form a **univariate time-series forecasting problem**.
+Indian states. In this project, **each state is modeled independently**
+to create a scalable and extensible electricity load forecasting system.
 
 ---
 
@@ -92,7 +92,7 @@ forecasting problems.
 ## 💾 Model Selection and Saving
 
 After evaluation, the best-performing model was retrained and saved for
-future predictions. The trained model was serialized and reused for making
+future predictions. Each trained model was serialized and reused for making
 new electricity load predictions without retraining.
 
 ---
@@ -100,10 +100,14 @@ new electricity load predictions without retraining.
 ## 🌐 Streamlit Web Application
 
 A lightweight Streamlit web application was developed to demonstrate
-**next-day electricity load prediction** using the trained machine learning
-model. The application loads the saved model, prepares the most recent
-feature values, and displays the predicted electricity load in a clean and
+**electricity load prediction** using trained machine learning models.
+The application loads the saved models, prepares the most recent feature
+values, and displays the predicted electricity load in a clean and
 user-friendly interface.
+
+Users can dynamically select an Indian state within the application to view
+historical trends and generate future electricity load predictions for that
+specific state.
 
 ---
 
@@ -123,8 +127,8 @@ From the project root directory, run:
 
 python -m streamlit run app.py
 
-The application will automatically open in a web browser.
 
+The application will automatically open in a web browser.
 
 ---
 
@@ -139,7 +143,6 @@ The application will automatically open in a web browser.
 ### 🌐 Streamlit Web Application
 ![Streamlit Web Application](screenshots/streamlit_app1.png)
 
-
 ---
 
 ## 🧰 Tools and Technologies
@@ -153,11 +156,26 @@ The application will automatically open in a web browser.
 
 ---
 
+## 🤝 Community & Contributions
+
+This project follows standard GitHub community guidelines to ensure a
+respectful and collaborative environment.
+
+• A Code of Conduct defines expected behavior for all participants  
+• Contribution guidelines are provided for structured improvements  
+• Security issues can be reported responsibly  
+• Issue templates are available for bug reports and feature requests  
+
+Contributions that improve code quality, documentation, or usability are
+welcome.
+
+---
+
 ## ✅ Conclusion
 
 This project demonstrates the effective application of machine learning
 techniques for electricity load forecasting. By comparing multiple
-regression models and deploying the best-performing model through a web
+regression models and deploying the best-performing models through a web
 application, the project highlights the practical relevance of machine
 learning in energy demand prediction and power management systems.
 
@@ -165,5 +183,4 @@ learning in energy demand prediction and power management systems.
 
 ## 👤 Author
 
-**Amit Kumar**  
-
+**Amit Kumar**
