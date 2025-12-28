@@ -15,7 +15,7 @@ st.set_page_config(
 )
 
 # =========================================================
-# CUSTOM CSS (POLISH)
+# CUSTOM CSS
 # =========================================================
 st.markdown(
     """
@@ -28,13 +28,11 @@ st.markdown(
         padding: 0.55rem 1.3rem;
         transition: all 0.25s ease-in-out;
     }
-
     div.stButton > button:hover {
         background-color: #2f80ed;
         box-shadow: 0 0 14px rgba(47, 128, 237, 0.8);
         transform: scale(1.03);
     }
-
     div[data-testid="metric-container"] {
         background-color: #0E1117;
         border: 1px solid #262730;
@@ -55,27 +53,34 @@ st.markdown(
 )
 
 # =========================================================
-# PATHS
+# PATHS (SAFE)
 # =========================================================
 FEATURE_DIR = "data/processed_features"
 MODEL_DIR = "models"
 
 # =========================================================
-# LOAD STATES
+# LOAD AVAILABLE STATES (DATA ONLY – SAFE TO CACHE)
 # =========================================================
 @st.cache_data
-def get_states():
-    states = sorted(
+def get_available_states():
+    if not os.path.exists(FEATURE_DIR):
+        return []
+    return sorted(
         f.replace("_features.csv", "")
         for f in os.listdir(FEATURE_DIR)
         if f.endswith("_features.csv")
     )
-    return ["Select State"] + states
 
-states = get_states()
+states = get_available_states()
+
+if not states:
+    st.error("Processed feature files not found. Please check deployment files.")
+    st.stop()
+
+states = ["Select State"] + states
 
 # =========================================================
-# STATE SELECTION
+# STATE SELECTION (UI LOGIC ONLY)
 # =========================================================
 st.subheader("📍 Select State")
 selected_state = st.selectbox("State", states, index=0)
@@ -85,13 +90,14 @@ if selected_state == "Select State":
     st.stop()
 
 # =========================================================
-# LOAD STATE DATA
+# LOAD STATE DATA (DATA ONLY)
 # =========================================================
 @st.cache_data(show_spinner=False)
 def load_state_data(state):
-    df = pd.read_csv(os.path.join(FEATURE_DIR, f"{state}_features.csv"))
+    path = os.path.join(FEATURE_DIR, f"{state}_features.csv")
+    df = pd.read_csv(path)
     df["date"] = pd.to_datetime(df["date"])
-    return df.copy()
+    return df
 
 df = load_state_data(selected_state)
 
@@ -102,12 +108,10 @@ last_available_date = df["date"].max()
 last_actual_load = df.loc[df["date"] == last_available_date, "load"].iloc[0]
 avg_30_day_load = df.tail(30)["load"].mean()
 
-col1, col2 = st.columns(2)
-
-with col1:
+c1, c2 = st.columns(2)
+with c1:
     st.metric("📅 Last Available Date", last_available_date.strftime("%d/%m/%Y"))
-
-with col2:
+with c2:
     st.metric("⚡ Last Actual Load", f"{last_actual_load:.2f} GWh")
 
 # =========================================================
@@ -130,16 +134,20 @@ trend_chart = (
 st.altair_chart(trend_chart, use_container_width=True)
 
 # =========================================================
-# LOAD MODEL
+# LOAD MODEL (SAFE CHECK)
 # =========================================================
 model_path = os.path.join(MODEL_DIR, f"{selected_state}_model.pkl")
+
+if not os.path.exists(model_path):
+    st.error("Trained model for this state is missing.")
+    st.stop()
+
 model = joblib.load(model_path)
 
 # =========================================================
 # MODEL DETAILS
 # =========================================================
 st.subheader("🤖 Model Details")
-
 st.markdown(
     f"""
     • **State:** {selected_state}  
@@ -152,7 +160,6 @@ st.markdown(
 # DATE INPUT
 # =========================================================
 st.subheader("📅 Select Prediction Date")
-
 selected_date = st.date_input(
     "Prediction Date (DD/MM/YYYY)",
     value=datetime.today().date(),
@@ -169,12 +176,12 @@ if st.button("🔮 Predict Load"):
         st.stop()
 
     days_ahead = (pd.to_datetime(selected_date) - last_available_date).days
-    horizon_text = "day ahead" if days_ahead == 1 else "days ahead"
+    horizon = "day ahead" if days_ahead == 1 else "days ahead"
 
     st.info(
         f"Predicting electricity load for **{selected_state}** on "
         f"**{selected_date.strftime('%d/%m/%Y')}** "
-        f"({days_ahead} {horizon_text})."
+        f"({days_ahead} {horizon})."
     )
 
     last_row = df.iloc[-1].copy()
@@ -195,11 +202,10 @@ if st.button("🔮 Predict Load"):
             current_features["day"] = next_date.day
             current_features["month"] = next_date.month
             current_features["weekday"] = next_date.weekday()
-
             current_date = next_date
 
     # =====================================================
-    # COMPARISON CARDS (PROFESSIONAL)
+    # PROFESSIONAL COMPARISON CARDS
     # =====================================================
     st.subheader("📊 Load Comparison")
 
@@ -210,23 +216,20 @@ if st.button("🔮 Predict Load"):
     pct_last = (diff_last / last_actual_load) * 100
 
     arrow_avg = "▲" if diff_avg >= 0 else "▼"
-    color_avg = "#27AE60" if diff_avg >= 0 else "#EB5757"
-
     arrow_last = "▲" if diff_last >= 0 else "▼"
+
+    color_avg = "#27AE60" if diff_avg >= 0 else "#EB5757"
     color_last = "#27AE60" if diff_last >= 0 else "#EB5757"
 
-    c1, c2, c3 = st.columns(3)
-
-    with c1:
-        st.metric("📊 30-Day Average Load", f"{avg_30_day_load:.2f} GWh")
-
-    with c2:
+    a, b, c = st.columns(3)
+    with a:
+        st.metric("📊 30-Day Avg Load", f"{avg_30_day_load:.2f} GWh")
+    with b:
         st.metric("🔮 Predicted Load", f"{prediction:.2f} GWh")
-
-    with c3:
+    with c:
         st.markdown(
             f"""
-            <div style="text-align:center; line-height:1.4;">
+            <div style="text-align:center;">
                 <span style="font-size:22px; font-weight:600; color:{color_avg};">
                     {arrow_avg} {abs(diff_avg):.2f} GWh
                 </span><br>
@@ -240,7 +243,7 @@ if st.button("🔮 Predict Load"):
 
     st.markdown(
         f"""
-        <div style="text-align:center; margin-top:10px;">
+        <div style="text-align:center; margin-top:8px;">
             <span style="font-size:14px; color:{color_last};">
                 {arrow_last} {abs(diff_last):.2f} GWh
                 ({pct_last:+.2f}% vs last actual load)
@@ -259,9 +262,9 @@ st.markdown(
     """
     <hr>
     <p style="text-align:center; font-size:16px; color:#cccccc;">
-    This application demonstrates a scalable, multi-state electricity load
-    forecasting system using machine learning. Independent models are trained
-    for each Indian state using historical electricity consumption data.
+    A scalable multi-state electricity load forecasting system using machine
+    learning. Each Indian state is modeled independently using historical
+    daily consumption data.
     </p>
     """,
     unsafe_allow_html=True
@@ -273,8 +276,8 @@ st.markdown(
 st.markdown(
     """
     <p style="text-align:center; color:gray; font-size:14px;">
-    ⚡ Electricity Load Forecasting using Machine Learning <br>
-    Developed by <b>Amit Kumar</b> <br>
+    ⚡ Electricity Load Forecasting using Machine Learning<br>
+    Developed by <b>Amit Kumar</b><br>
     🔗 <a href="https://github.com/amitx2209/electricity-load-forecasting" target="_blank">
     GitHub Repository</a>
     </p>
