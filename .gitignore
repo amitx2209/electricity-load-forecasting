@@ -1,0 +1,16 @@
+# Models
+models/*.pkl
+
+# Processed data
+data/processed/
+data/processed_features/
+
+# Results
+results/
+
+# Notebooks
+notebooks/.ipynb_checkpoints/
+
+# Python
+__pycache__/
+*.pyc
