@@ -53,34 +53,51 @@ st.markdown(
 )
 
 # =========================================================
-# PATHS (SAFE)
+# PATHS
 # =========================================================
 FEATURE_DIR = "data/processed_features"
 MODEL_DIR = "models"
 
 # =========================================================
-# LOAD AVAILABLE STATES (DATA ONLY – SAFE TO CACHE)
+# CHECK REQUIRED RESOURCES (FINAL SAFETY GATE)
+# =========================================================
+if not os.path.exists(FEATURE_DIR):
+    st.error(
+        "Processed feature files are not available in this deployment.\n\n"
+        "This application expects pre-generated state-wise feature files "
+        "inside `data/processed_features/`.\n\n"
+        "Please regenerate features locally or include them in the deployment."
+    )
+    st.stop()
+
+if not os.path.exists(MODEL_DIR):
+    st.error(
+        "Trained models directory not found.\n\n"
+        "This app requires pre-trained state-wise models inside `models/`."
+    )
+    st.stop()
+
+# =========================================================
+# LOAD AVAILABLE STATES (PURE DATA FUNCTION)
 # =========================================================
 @st.cache_data
-def get_available_states():
-    if not os.path.exists(FEATURE_DIR):
-        return []
+def get_states(feature_dir):
     return sorted(
         f.replace("_features.csv", "")
-        for f in os.listdir(FEATURE_DIR)
+        for f in os.listdir(feature_dir)
         if f.endswith("_features.csv")
     )
 
-states = get_available_states()
+states = get_states(FEATURE_DIR)
 
 if not states:
-    st.error("Processed feature files not found. Please check deployment files.")
+    st.error("No state feature files found in processed_features directory.")
     st.stop()
 
 states = ["Select State"] + states
 
 # =========================================================
-# STATE SELECTION (UI LOGIC ONLY)
+# STATE SELECTION
 # =========================================================
 st.subheader("📍 Select State")
 selected_state = st.selectbox("State", states, index=0)
@@ -90,7 +107,7 @@ if selected_state == "Select State":
     st.stop()
 
 # =========================================================
-# LOAD STATE DATA (DATA ONLY)
+# LOAD STATE DATA
 # =========================================================
 @st.cache_data(show_spinner=False)
 def load_state_data(state):
@@ -100,6 +117,17 @@ def load_state_data(state):
     return df
 
 df = load_state_data(selected_state)
+
+# =========================================================
+# LOAD MODEL
+# =========================================================
+model_path = os.path.join(MODEL_DIR, f"{selected_state}_model.pkl")
+
+if not os.path.exists(model_path):
+    st.error(f"Trained model not found for {selected_state}.")
+    st.stop()
+
+model = joblib.load(model_path)
 
 # =========================================================
 # LAST & AVERAGE LOAD
@@ -115,7 +143,7 @@ with c2:
     st.metric("⚡ Last Actual Load", f"{last_actual_load:.2f} GWh")
 
 # =========================================================
-# RECENT TREND (CONTEXT ONLY)
+# RECENT TREND (CONTEXT)
 # =========================================================
 st.subheader("📈 Recent Electricity Consumption Trend (Last 30 Days)")
 
@@ -134,32 +162,10 @@ trend_chart = (
 st.altair_chart(trend_chart, use_container_width=True)
 
 # =========================================================
-# LOAD MODEL (SAFE CHECK)
-# =========================================================
-model_path = os.path.join(MODEL_DIR, f"{selected_state}_model.pkl")
-
-if not os.path.exists(model_path):
-    st.error("Trained model for this state is missing.")
-    st.stop()
-
-model = joblib.load(model_path)
-
-# =========================================================
-# MODEL DETAILS
-# =========================================================
-st.subheader("🤖 Model Details")
-st.markdown(
-    f"""
-    • **State:** {selected_state}  
-    • **Model Type:** Random Forest Regressor  
-    • **Training Strategy:** Independent state-wise model  
-    """
-)
-
-# =========================================================
 # DATE INPUT
 # =========================================================
 st.subheader("📅 Select Prediction Date")
+
 selected_date = st.date_input(
     "Prediction Date (DD/MM/YYYY)",
     value=datetime.today().date(),
@@ -185,27 +191,27 @@ if st.button("🔮 Predict Load"):
     )
 
     last_row = df.iloc[-1].copy()
-    current_features = last_row.drop(["date", "load"])
+    features = last_row.drop(["date", "load"])
     current_date = last_available_date
 
     with st.spinner("Predicting future electricity load..."):
         for _ in range(days_ahead):
-            prediction = model.predict(pd.DataFrame([current_features]))[0]
+            prediction = model.predict(pd.DataFrame([features]))[0]
 
-            current_features["lag_7"] = current_features["lag_1"]
-            current_features["lag_1"] = prediction
-            current_features["rolling_mean_7"] = (
-                current_features["rolling_mean_7"] * 6 + prediction
+            features["lag_7"] = features["lag_1"]
+            features["lag_1"] = prediction
+            features["rolling_mean_7"] = (
+                features["rolling_mean_7"] * 6 + prediction
             ) / 7
 
             next_date = current_date + timedelta(days=1)
-            current_features["day"] = next_date.day
-            current_features["month"] = next_date.month
-            current_features["weekday"] = next_date.weekday()
+            features["day"] = next_date.day
+            features["month"] = next_date.month
+            features["weekday"] = next_date.weekday()
             current_date = next_date
 
     # =====================================================
-    # PROFESSIONAL COMPARISON CARDS
+    # PROFESSIONAL COMPARISON
     # =====================================================
     st.subheader("📊 Load Comparison")
 
@@ -256,25 +262,11 @@ if st.button("🔮 Predict Load"):
     st.caption("Note: GWh and MU (Million Units) are equivalent energy units.")
 
 # =========================================================
-# PROJECT INFO
-# =========================================================
-st.markdown(
-    """
-    <hr>
-    <p style="text-align:center; font-size:16px; color:#cccccc;">
-    A scalable multi-state electricity load forecasting system using machine
-    learning. Each Indian state is modeled independently using historical
-    daily consumption data.
-    </p>
-    """,
-    unsafe_allow_html=True
-)
-
-# =========================================================
 # FOOTER
 # =========================================================
 st.markdown(
     """
+    <hr>
     <p style="text-align:center; color:gray; font-size:14px;">
     ⚡ Electricity Load Forecasting using Machine Learning<br>
     Developed by <b>Amit Kumar</b><br>
