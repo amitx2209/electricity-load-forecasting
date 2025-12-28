@@ -59,26 +59,24 @@ FEATURE_DIR = "data/processed_features"
 MODEL_DIR = "models"
 
 # =========================================================
-# CHECK REQUIRED RESOURCES (FINAL SAFETY GATE)
+# DEPLOYMENT SAFETY CHECKS
 # =========================================================
 if not os.path.exists(FEATURE_DIR):
     st.error(
         "Processed feature files are not available in this deployment.\n\n"
-        "This application expects pre-generated state-wise feature files "
-        "inside `data/processed_features/`.\n\n"
-        "Please regenerate features locally or include them in the deployment."
+        "Please ensure `data/processed_features/` is included in the repository."
     )
     st.stop()
 
 if not os.path.exists(MODEL_DIR):
     st.error(
         "Trained models directory not found.\n\n"
-        "This app requires pre-trained state-wise models inside `models/`."
+        "Please include pre-trained state-wise models in `models/`."
     )
     st.stop()
 
 # =========================================================
-# LOAD AVAILABLE STATES (PURE DATA FUNCTION)
+# LOAD STATES (PURE DATA FUNCTION)
 # =========================================================
 @st.cache_data
 def get_states(feature_dir):
@@ -91,7 +89,7 @@ def get_states(feature_dir):
 states = get_states(FEATURE_DIR)
 
 if not states:
-    st.error("No state feature files found in processed_features directory.")
+    st.error("No state feature files found.")
     st.stop()
 
 states = ["Select State"] + states
@@ -121,20 +119,38 @@ df = load_state_data(selected_state)
 # =========================================================
 # LOAD MODEL
 # =========================================================
+@st.cache_resource
+def load_model(path):
+    return joblib.load(path)
+
 model_path = os.path.join(MODEL_DIR, f"{selected_state}_model.pkl")
 
 if not os.path.exists(model_path):
     st.error(f"Trained model not found for {selected_state}.")
     st.stop()
 
-model = joblib.load(model_path)
+model = load_model(model_path)
+
+# =========================================================
+# MODEL INFORMATION (RESTORED, CLEAN)
+# =========================================================
+st.subheader("🤖 Model Information")
+st.markdown(
+    f"""
+    • **State:** {selected_state}  
+    • **Model Type:** Random Forest Regressor  
+    • **Training Approach:** Independent state-wise model  
+    • **Data Frequency:** Daily electricity consumption  
+    """
+)
 
 # =========================================================
 # LAST & AVERAGE LOAD
 # =========================================================
 last_available_date = df["date"].max()
 last_actual_load = df.loc[df["date"] == last_available_date, "load"].iloc[0]
-avg_30_day_load = df.tail(30)["load"].mean()
+window = min(30, len(df))
+avg_30_day_load = df.tail(window)["load"].mean()
 
 c1, c2 = st.columns(2)
 with c1:
@@ -147,7 +163,7 @@ with c2:
 # =========================================================
 st.subheader("📈 Recent Electricity Consumption Trend (Last 30 Days)")
 
-trend_df = df.tail(30)[["date", "load"]]
+trend_df = df.tail(window)[["date", "load"]]
 
 trend_chart = (
     alt.Chart(trend_df)
@@ -211,7 +227,7 @@ if st.button("🔮 Predict Load"):
             current_date = next_date
 
     # =====================================================
-    # PROFESSIONAL COMPARISON
+    # COMPARISON
     # =====================================================
     st.subheader("📊 Load Comparison")
 
@@ -259,14 +275,39 @@ if st.button("🔮 Predict Load"):
         unsafe_allow_html=True
     )
 
+    # =====================================================
+    # PREDICTION CONFIDENCE DISCLAIMER (NEW)
+    # =====================================================
+    st.caption(
+        "⚠️ **Prediction Confidence Disclaimer:** "
+        "Forecasts are generated using historical consumption patterns. "
+        "Prediction uncertainty increases for longer horizons and during "
+        "unusual events such as extreme weather, policy changes, or grid disruptions."
+    )
+
     st.caption("Note: GWh and MU (Million Units) are equivalent energy units.")
+
+# =========================================================
+# PROJECT INFORMATION (LARGER TEXT)
+# =========================================================
+st.markdown(
+    """
+    <hr>
+    <p style="text-align:center; font-size:18px; color:#dddddd; line-height:1.6;">
+    This application presents a scalable, multi-state electricity load forecasting
+    system built using machine learning. Each Indian state is modeled independently
+    using historical daily consumption data to enable reliable and interpretable
+    energy demand forecasting.
+    </p>
+    """,
+    unsafe_allow_html=True
+)
 
 # =========================================================
 # FOOTER
 # =========================================================
 st.markdown(
     """
-    <hr>
     <p style="text-align:center; color:gray; font-size:14px;">
     ⚡ Electricity Load Forecasting using Machine Learning<br>
     Developed by <b>Amit Kumar</b><br>
