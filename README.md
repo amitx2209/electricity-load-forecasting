@@ -137,7 +137,7 @@ The application will automatically open in a web browser.
 ![Residual Error Plot](screenshots/residual_plot.png)
 
 ### 🌐 Streamlit Web Application
-![Streamlit Web Application](screenshots/streamlit_app.png)
+![Streamlit Web Application](screenshots/streamlit_app1.png)
 
 
 ---
